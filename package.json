@@ -1,7 +1,7 @@
 {
   "name": "vidfun",
-  "version": "1.0.0",
-  "description": "Self-hosted Movie & TV Show Video Player, Multi-Server Embed API, and VidSrc/Stream Scraper Engine",
+  "version": "2.0.0",
+  "description": "Movie & TV embed API with its own scraping player (VidSrc-style). Not a streaming site.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
