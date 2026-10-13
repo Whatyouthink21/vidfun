@@ -1,0 +1,33 @@
+{
+  "name": "vidfun",
+  "version": "1.0.0",
+  "description": "Self-hosted Movie & TV Show Video Player, Multi-Server Embed API, and VidSrc/Stream Scraper Engine",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test/verify.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Whatyouthink21/vidfun.git"
+  },
+  "keywords": [
+    "vidfun",
+    "vidsrc",
+    "video-player",
+    "embed-api",
+    "hls",
+    "movies",
+    "tv-shows",
+    "scraper"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "hls.js": "^1.5.18"
+  }
+}
