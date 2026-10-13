@@ -1,499 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VidFun — Movie &amp; TV Streaming Player, Scraper &amp; Embed API</title>
-  <link rel="stylesheet" href="/css/styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VidFun — Movie & TV Embed API</title>
+<style>
+  :root{--a:#e50914;--bg:#07090e;--card:#0f141f;--line:#1e293b;--tx:#e2e8f0;--mut:#94a3b8}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 system-ui,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:32px 18px 64px}
+  h1{font-size:30px;margin:0 0 4px}.sub{color:var(--mut);margin:0 0 26px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin:16px 0}
+  code{background:#020617;border:1px solid var(--line);border-radius:6px;padding:2px 6px;font-size:13px;word-break:break-all}
+  pre{background:#020617;border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto}
+  pre code{border:0;background:none;padding:0}
+  table{width:100%;border-collapse:collapse} td,th{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)}
+  input,select{background:#020617;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:9px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  button{background:var(--a);color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+  button.ghost{background:#1e293b}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  iframe{width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:10px;background:#000}
+  #json{max-height:300px}
+</style>
 </head>
 <body>
-  <!-- Sticky Navigation Header -->
-  <header class="navbar">
-    <div class="nav-inner">
-      <div class="brand-group" id="brand-home">
-        <div class="brand-logo">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <polygon points="6 3 20 12 6 21 6 3"></polygon>
-          </svg>
-        </div>
-        <div>
-          <span class="brand-name">VidFun</span>
-          <span class="brand-tag">STREAM &amp; EMBED API</span>
-        </div>
-      </div>
+<main>
+  <h1>🎬 VidFun Embed API</h1>
+  <p class="sub">Not a streaming site. One embed endpoint + one JSON API. Give it a TMDB or IMDb id — it scrapes direct streams where possible and falls back to provider iframes.</p>
 
-      <nav class="nav-links">
-        <button class="nav-tab active" data-tab="catalog" type="button">Browse Catalog</button>
-        <button class="nav-tab" data-tab="theater" type="button">Watch Player</button>
-        <button class="nav-tab" data-tab="playground" type="button">Embed API Builder</button>
-        <button class="nav-tab" data-tab="scraper" type="button">Scraper &amp; Unpacker</button>
-        <button class="nav-tab" data-tab="custom" type="button">+ Custom Sources</button>
-      </nav>
-
-      <div class="nav-search-wrap">
-        <input
-          id="global-search-input"
-          class="nav-search-input"
-          type="text"
-          placeholder="Search title, TMDB ID (e.g. 550), IMDb (tt...)..."
-          autocomplete="off"
-        />
-        <button id="quick-id-play-btn" class="quick-play-btn" type="button" title="Quick Play TMDB/IMDb ID">
-          Play ID
-        </button>
-      </div>
+  <div class="card">
+    <h2>Try it</h2>
+    <div class="grid">
+      <label>Type <select id="type"><option value="movie">Movie</option><option value="tv">TV show</option></select></label>
+      <label>TMDB or IMDb id <input id="id" value="550" placeholder="550 or tt0137523"></label>
+      <label>Season <input id="s" type="number" min="1" value="1"></label>
+      <label>Episode <input id="e" type="number" min="1" value="1"></label>
+      <label>Server (optional) <select id="server"><option value="">Auto (scraped first)</option></select></label>
     </div>
-  </header>
-
-  <main class="main-container">
-    <!-- TAB 1: BROWSE CATALOG -->
-    <section id="tab-catalog" class="tab-section active">
-      <!-- Hero Spotlight Banner -->
-      <div id="hero-banner" class="hero-banner">
-        <div class="hero-backdrop" id="hero-backdrop"></div>
-        <div class="hero-content">
-          <div class="hero-badges">
-            <span class="pill-accent">FEATURED STREAM</span>
-            <span id="hero-meta-badge" class="pill-glass">2024 • SCI-FI • ★ 8.8</span>
-          </div>
-          <h1 id="hero-title" class="hero-title">Dune: Part Two</h1>
-          <p id="hero-synopsis" class="hero-synopsis">
-            Paul Atreides unites with Chani and the Fremen while on a warpath of revenge against the conspirators who destroyed his family.
-          </p>
-          <div class="hero-actions">
-            <button id="hero-watch-btn" class="btn-primary btn-lg" type="button">
-              ▶ Watch Now in Player
-            </button>
-            <button id="hero-embed-btn" class="btn-secondary btn-lg" type="button">
-              &lt;/&gt; Get Embed API Code
-            </button>
-            <a id="hero-direct-embed-link" href="/embed/movie/693134" target="_blank" class="btn-ghost btn-lg">
-              ↗ Open Standalone Embed
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Filter Bar -->
-      <div class="filter-bar">
-        <div class="type-pills">
-          <button class="filter-pill active" data-type="all" type="button">All Media</button>
-          <button class="filter-pill" data-type="movie" type="button">Movies</button>
-          <button class="filter-pill" data-type="tv" type="button">TV Shows</button>
-        </div>
-
-        <div class="genre-select-wrap">
-          <label for="genre-filter">Genre:</label>
-          <select id="genre-filter" class="select-input">
-            <option value="all">All Genres</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Catalog Media Grid -->
-      <div id="catalog-grid" class="media-grid"></div>
-    </section>
-
-    <!-- TAB 2: WATCH THEATER PLAYER -->
-    <section id="tab-theater" class="tab-section">
-      <div class="theater-layout">
-        <div class="theater-main">
-          <!-- Embedded VidFun Player Frame -->
-          <div class="player-frame-wrapper">
-            <iframe
-              id="theater-iframe"
-              class="theater-iframe"
-              src="/embed/movie/693134"
-              allowfullscreen
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-            ></iframe>
-          </div>
-
-          <!-- Server Quick Switcher Bar below Player -->
-          <div class="theater-toolbar">
-            <div class="toolbar-group">
-              <span class="toolbar-label">Active Server:</span>
-              <div id="theater-server-pills" class="server-pill-row"></div>
-            </div>
-            <div class="toolbar-actions">
-              <a id="theater-standalone-link" href="/embed/movie/693134" target="_blank" class="btn-secondary btn-sm">
-                ↗ Standalone Player URL
-              </a>
-              <button id="theater-copy-iframe-btn" class="btn-primary btn-sm" type="button">
-                📋 Copy &lt;iframe&gt; Code
-              </button>
-            </div>
-          </div>
-
-          <!-- Media Details & Embed Snippet Card -->
-          <div class="theater-info-card">
-            <div class="theater-info-header">
-              <div>
-                <div class="theater-badges">
-                  <span id="theater-type-badge" class="pill-accent">MOVIE</span>
-                  <span id="theater-ids-badge" class="pill-glass">TMDB #693134 • tt15239678</span>
-                </div>
-                <h2 id="theater-title" class="theater-title">Dune: Part Two</h2>
-                <p id="theater-submeta" class="theater-submeta">2024 • 2h 46m • ★ 8.8</p>
-              </div>
-            </div>
-            <p id="theater-synopsis" class="theater-synopsis"></p>
-
-            <div class="embed-code-box">
-              <div class="code-box-header">
-                <span>Embed Player URL &amp; Iframe Snippet</span>
-                <span id="copy-toast" class="copy-toast hidden">Copied!</span>
-              </div>
-              <pre id="theater-iframe-code" class="code-pre"></pre>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sidebar: TV Seasons/Episodes OR Related Media + Direct Streams -->
-        <aside class="theater-sidebar">
-          <!-- TV Episode Selector Panel (shown when watching a TV Series) -->
-          <div id="theater-tv-panel" class="sidebar-card hidden">
-            <div class="sidebar-card-header">
-              <h3>Seasons &amp; Episodes</h3>
-              <select id="theater-season-select" class="select-input"></select>
-            </div>
-            <div id="theater-episode-list" class="sidebar-ep-list"></div>
-          </div>
-
-          <!-- Resolved Direct Streams & API Sources -->
-          <div class="sidebar-card">
-            <div class="sidebar-card-header">
-              <h3>Resolved Stream Sources</h3>
-              <span class="pill-glass">API JSON</span>
-            </div>
-            <div id="theater-direct-streams" class="direct-streams-list"></div>
-          </div>
-        </aside>
-      </div>
-    </section>
-
-    <!-- TAB 3: EMBED & PLAYER API PLAYGROUND -->
-    <section id="tab-playground" class="tab-section">
-      <div class="section-header">
-        <div>
-          <h2>Video Player Embed API &amp; URL Builder</h2>
-          <p class="section-sub">
-            Drop-in compatible with VidSrc URL patterns (<code>/embed/movie/{id}</code> and <code>/embed/tv/{id}/{s}/{e}</code>). Works with any TMDB ID or IMDb ID.
-          </p>
-        </div>
-      </div>
-
-      <div class="playground-grid">
-        <!-- Builder Controls -->
-        <div class="card-panel">
-          <h3>Configure Embed Parameters</h3>
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="pg-type">Media Type</label>
-              <select id="pg-type" class="select-input">
-                <option value="movie">Movie (/embed/movie/:id)</option>
-                <option value="tv">TV Series (/embed/tv/:id/:s/:e)</option>
-              </select>
-            </div>
-
-            <div class="form-field">
-              <label for="pg-id">TMDB ID or IMDb ID</label>
-              <input id="pg-id" class="text-input" type="text" value="693134" placeholder="e.g. 693134 or tt15239678" />
-            </div>
-
-            <div id="pg-tv-fields" class="form-row-2 hidden">
-              <div class="form-field">
-                <label for="pg-season">Season</label>
-                <input id="pg-season" class="text-input" type="number" min="1" value="1" />
-              </div>
-              <div class="form-field">
-                <label for="pg-episode">Episode</label>
-                <input id="pg-episode" class="text-input" type="number" min="1" value="1" />
-              </div>
-            </div>
-
-            <div class="form-field">
-              <label for="pg-server">Default Server</label>
-              <select id="pg-server" class="select-input">
-                <option value="vidfun-direct">vidfun-direct (Native HLS/MP4 Player)</option>
-                <option value="vidsrc-xyz">vidsrc-xyz (vidsrc.xyz)</option>
-                <option value="vidsrc-icu">vidsrc-icu (vidsrc.icu)</option>
-                <option value="vidsrc-cc">vidsrc-cc (vidsrc.cc v2)</option>
-                <option value="vidsrc-to">vidsrc-to (vidsrc.to)</option>
-                <option value="multiembed">multiembed (multiembed.mov)</option>
-                <option value="autoembed">autoembed (autoembed.cc)</option>
-                <option value="2embed">2embed (2embed.cc)</option>
-              </select>
-            </div>
-
-            <div class="form-row-2">
-              <div class="form-field">
-                <label for="pg-color">Player Accent Hex Color</label>
-                <input id="pg-color" class="text-input" type="text" value="e50914" placeholder="e50914" />
-              </div>
-              <div class="form-field">
-                <label for="pg-sub">Default Subtitles</label>
-                <select id="pg-sub" class="select-input">
-                  <option value="en">English (en)</option>
-                  <option value="es">Spanish (es)</option>
-                  <option value="fr">French (fr)</option>
-                  <option value="off">Subtitles Off</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-field checkbox-row">
-              <input id="pg-autoplay" type="checkbox" />
-              <label for="pg-autoplay">Autoplay on load (<code>?autoplay=1</code>)</label>
-            </div>
-
-            <div class="preset-buttons">
-              <span class="preset-label">Quick Presets:</span>
-              <button type="button" class="chip-btn pg-preset" data-type="movie" data-id="693134">Dune: Part Two (693134)</button>
-              <button type="button" class="chip-btn pg-preset" data-type="movie" data-id="157336">Interstellar (157336)</button>
-              <button type="button" class="chip-btn pg-preset" data-type="tv" data-id="1396" data-s="1" data-e="1">Breaking Bad S1E1 (1396)</button>
-              <button type="button" class="chip-btn pg-preset" data-type="tv" data-id="94605" data-s="1" data-e="1">Arcane S1E1 (94605)</button>
-            </div>
-
-            <button id="pg-apply-btn" class="btn-primary" type="button">
-              ⚡ Update Live Preview &amp; Fetch API JSON
-            </button>
-          </div>
-        </div>
-
-        <!-- Preview & Code Output -->
-        <div class="card-panel">
-          <h3>Live Embed Player Preview</h3>
-          <div class="pg-preview-box">
-            <iframe
-              id="pg-preview-iframe"
-              src="/embed/movie/693134"
-              allowfullscreen
-              allow="autoplay; encrypted-media; picture-in-picture"
-            ></iframe>
-          </div>
-
-          <div class="code-box-header" style="margin-top:14px;">
-            <span>Generated Embed URL &amp; HTML Snippet</span>
-            <button id="pg-copy-btn" class="btn-secondary btn-sm" type="button">Copy Snippet</button>
-          </div>
-          <pre id="pg-code-output" class="code-pre"></pre>
-
-          <div class="code-box-header" style="margin-top:14px;">
-            <span>REST API Response (<code>GET /api/sources/...</code>)</span>
-          </div>
-          <pre id="pg-json-output" class="code-pre json-pre">Loading JSON...</pre>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 4: SCRAPER & JS UNPACKER STUDIO -->
-    <section id="tab-scraper" class="tab-section">
-      <div class="section-header">
-        <div>
-          <h2>VidSrc &amp; Embed Stream Scraper + JS Packer Unpacker</h2>
-          <p class="section-sub">
-            Extract direct <code>.m3u8</code> (HLS), <code>.mp4</code>, WebVTT subtitles, <code>data-hash</code> server tokens, and unpack obfuscated <code>eval(function(p,a,c,k,e,d)...)</code> scripts from VidSrc or any embed page.
-          </p>
-        </div>
-      </div>
-
-      <div class="playground-grid">
-        <div class="card-panel">
-          <h3>Target Embed URL or Raw HTML/Script Payload</h3>
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="scrape-url-input">Target Embed Page URL</label>
-              <input
-                id="scrape-url-input"
-                class="text-input"
-                type="text"
-                value="https://vidsrc.xyz/embed/movie/693134"
-                placeholder="https://vidsrc.xyz/embed/movie/693134"
-              />
-            </div>
-
-            <div class="preset-buttons">
-              <button id="load-sample-scrape-btn" class="chip-btn" type="button">
-                📦 Load Sample VidSrc + Packed JS Payload
-              </button>
-              <button class="chip-btn scrape-url-preset" data-url="https://vidsrc.xyz/embed/movie/693134" type="button">
-                vidsrc.xyz Movie
-              </button>
-              <button class="chip-btn scrape-url-preset" data-url="https://vidsrc.icu/embed/tv/1396/1/1" type="button">
-                vidsrc.icu TV S1E1
-              </button>
-            </div>
-
-            <div class="form-field">
-              <label for="scrape-raw-html">Optional Raw HTML or Packed JS (leave empty to fetch URL directly)</label>
-              <textarea
-                id="scrape-raw-html"
-                class="textarea-input"
-                rows="8"
-                placeholder="Paste HTML containing <iframe id='player_iframe'>, .server[data-hash], or eval(function(p,a,c,k,e,d)...) packed code..."
-              ></textarea>
-            </div>
-
-            <div style="display:flex;gap:10px;">
-              <button id="run-scrape-btn" class="btn-primary" type="button">
-                🔍 Run Scraper &amp; Unpacker
-              </button>
-              <button id="clear-scrape-html-btn" class="btn-secondary" type="button">
-                Clear Raw HTML
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card-panel">
-          <h3>Extracted Streams, Servers &amp; Unpacked JS</h3>
-          <div id="scrape-results-container" class="scrape-results-container">
-            <p class="muted-text">Click "Run Scraper &amp; Unpacker" to inspect extracted HLS (.m3u8) streams, MP4 links, and unpacked scripts.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 5: CUSTOM SOURCES & PROVIDERS MANAGER -->
-    <section id="tab-custom" class="tab-section">
-      <div class="section-header">
-        <div>
-          <h2>Custom Media &amp; Provider Manager</h2>
-          <p class="section-sub">
-            Add your own Movies, TV Shows, direct <code>.m3u8</code> / <code>.mp4</code> stream URLs, or custom embed provider templates to your local VidFun server.
-          </p>
-        </div>
-      </div>
-
-      <div class="playground-grid">
-        <!-- Add Custom Movie / TV Stream -->
-        <div class="card-panel">
-          <h3>Add Custom Movie or TV Show Stream</h3>
-          <form id="custom-media-form" class="form-grid">
-            <div class="form-row-2">
-              <div class="form-field">
-                <label for="cm-title">Title *</label>
-                <input id="cm-title" class="text-input" type="text" required placeholder="e.g. Cyberpunk: Edgerunners" />
-              </div>
-              <div class="form-field">
-                <label for="cm-type">Type</label>
-                <select id="cm-type" class="select-input">
-                  <option value="movie">Movie</option>
-                  <option value="tv">TV Show</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-row-2">
-              <div class="form-field">
-                <label for="cm-tmdb">TMDB ID (or custom ID)</label>
-                <input id="cm-tmdb" class="text-input" type="text" placeholder="e.g. 105248" />
-              </div>
-              <div class="form-field">
-                <label for="cm-year">Release Year</label>
-                <input id="cm-year" class="text-input" type="number" value="2025" />
-              </div>
-            </div>
-
-            <div class="form-field">
-              <label for="cm-stream">Direct Stream URL (.m3u8 HLS or .mp4)</label>
-              <input
-                id="cm-stream"
-                class="text-input"
-                type="text"
-                value="https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8"
-                placeholder="https://example.com/master.m3u8"
-              />
-            </div>
-
-            <div class="form-field">
-              <label for="cm-embed">Optional Custom Upstream Embed Iframe URL</label>
-              <input
-                id="cm-embed"
-                class="text-input"
-                type="text"
-                placeholder="https://vidsrc.xyz/embed/movie/..."
-              />
-            </div>
-
-            <div class="form-field">
-              <label for="cm-synopsis">Synopsis</label>
-              <textarea id="cm-synopsis" class="textarea-input" rows="3" placeholder="Brief plot description..."></textarea>
-            </div>
-
-            <button class="btn-primary" type="submit">
-              + Save Custom Media &amp; Launch Player
-            </button>
-          </form>
-        </div>
-
-        <!-- Add Custom Upstream Provider Template -->
-        <div class="card-panel">
-          <h3>Add Custom Upstream Embed Provider</h3>
-          <form id="custom-provider-form" class="form-grid">
-            <div class="form-row-2">
-              <div class="form-field">
-                <label for="cp-name">Provider Name *</label>
-                <input id="cp-name" class="text-input" type="text" required placeholder="e.g. VidSrc Mirror Pro" />
-              </div>
-              <div class="form-field">
-                <label for="cp-badge">Badge Label</label>
-                <input id="cp-badge" class="text-input" type="text" value="MIRROR" />
-              </div>
-            </div>
-
-            <div class="form-field">
-              <label for="cp-movie-tpl">Movie Embed URL Template (use <code>{id}</code>)</label>
-              <input
-                id="cp-movie-tpl"
-                class="text-input"
-                type="text"
-                required
-                value="https://vidsrc.xyz/embed/movie/{id}"
-              />
-            </div>
-
-            <div class="form-field">
-              <label for="cp-tv-tpl">TV Show Embed URL Template (use <code>{id}</code>, <code>{s}</code>, <code>{e}</code>)</label>
-              <input
-                id="cp-tv-tpl"
-                class="text-input"
-                type="text"
-                required
-                value="https://vidsrc.xyz/embed/tv/{id}/{s}-{e}"
-              />
-            </div>
-
-            <button class="btn-primary" type="submit">
-              + Register Provider in Embed Player
-            </button>
-          </form>
-
-          <div style="margin-top:22px;">
-            <h3>Active Providers Registry</h3>
-            <div id="providers-registry-list" class="providers-registry-list"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <div>
-        <strong>VidFun Video Player &amp; Embed API</strong> — Self-hosted Local Streaming Engine &amp; Multi-Server Resolver
-      </div>
-      <div class="footer-links">
-        <a href="/api/health" target="_blank">API Health</a>
-        <a href="/api/catalog" target="_blank">Catalog JSON</a>
-        <a href="/api/providers" target="_blank">Providers JSON</a>
-        <a href="/embed/movie/693134" target="_blank">Sample Movie Embed</a>
-        <a href="/embed/tv/1396/1/1" target="_blank">Sample TV Embed</a>
-      </div>
+    <div class="row">
+      <button id="play">▶ Play in player below</button>
+      <button class="ghost" id="getjson">GET /api/sources JSON</button>
+      <button class="ghost" id="copy">Copy iframe snippet</button>
     </div>
-  </footer>
+    <p>Embed URL: <code id="url"></code></p>
+    <iframe id="preview" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>
+    <pre id="json" style="display:none"><code></code></pre>
+  </div>
 
-  <script src="/js/app.js"></script>
+  <div class="card">
+    <h2>Embed URLs</h2>
+    <table>
+      <tr><th>What</th><th>URL</th></tr>
+      <tr><td>Movie</td><td><code>/embed/movie/{tmdbId}</code> or <code>/embed/movie/{imdbId}</code></td></tr>
+      <tr><td>TV episode</td><td><code>/embed/tv/{id}/{season}/{episode}</code> (also <code>{s}-{e}</code>, <code>/v2/embed/…</code>)</td></tr>
+      <tr><td>Params</td><td><code>?server=vidlink&amp;autoplay=1&amp;color=e50914&amp;t=120&amp;autonext=1</code></td></tr>
+    </table>
+    <pre><code id="snippet"></code></pre>
+  </div>
+
+  <div class="card">
+    <h2>JSON API</h2>
+    <table>
+      <tr><th>Endpoint</th><th>Returns</th></tr>
+      <tr><td><code>GET /api/sources/movie/:id</code></td><td rowspan="2">Scraped direct streams (verified), subtitles, per-provider iframe URLs + availability, scrape trace. Add <code>?scrape=0</code> to skip scraping.</td></tr>
+      <tr><td><code>GET /api/sources/tv/:id/:s/:e</code></td></tr>
+      <tr><td><code>GET /api/scrape?url=…</code></td><td>Scrape any VidSrc-style embed URL → <code>.m3u8</code>/<code>.mp4</code> + subtitles (follows the <code>data-hash → rcp → prorcp</code> chain, unpacks packed JS).</td></tr>
+      <tr><td><code>GET /api/proxy/stream?url=…&amp;referer=…</code></td><td>CORS/Referer proxy that rewrites HLS playlists (segments + <code>URI="…"</code> keys).</td></tr>
+      <tr><td><code>GET /api/providers</code> · <code>/api/health</code></td><td>Provider registry / status.</td></tr>
+    </table>
+  </div>
+
+  <p class="sub">Providers: VidLink · Videasy · VidFast · VidSrc.cc · VidSrc (.xyz, scraped) · VidSrcMe (scraped) · VidCore · AutoEmbed · SuperEmbed · 2Embed · Embed.su — edit one file (<code>src/providers.js</code>) when a domain rotates. Set <code>TMDB_API_KEY</code> to convert IMDb↔TMDB ids and get titles/episode counts.</p>
+</main>
+<script>
+  const $ = (i) => document.getElementById(i);
+  fetch('/api/providers').then(r => r.json()).then(d => {
+    for (const p of d.providers) { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; $('server').appendChild(o); }
+  }).catch(() => {});
+  function build() {
+    const type = $('type').value, id = $('id').value.trim() || '550';
+    let url = type === 'tv' ? `/embed/tv/${id}/${$('s').value || 1}/${$('e').value || 1}` : `/embed/movie/${id}`;
+    const srv = $('server').value; if (srv) url += `?server=${srv}`;
+    $('url').textContent = location.origin + url;
+    $('snippet').textContent = `<iframe src="${location.origin}${url}" width="100%" height="100%" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>`;
+    return url;
+  }
+  ['type','id','s','e','server'].forEach(i => $(i).addEventListener('input', build)); build();
+  $('play').onclick = () => { $('preview').src = build(); };
+  $('copy').onclick = () => navigator.clipboard && navigator.clipboard.writeText($('snippet').textContent);
+  $('getjson').onclick = async () => {
+    const type = $('type').value, id = $('id').value.trim() || '550';
+    const api = type === 'tv' ? `/api/sources/tv/${id}/${$('s').value || 1}/${$('e').value || 1}` : `/api/sources/movie/${id}`;
+    const box = $('json'); box.style.display = 'block'; box.firstElementChild.textContent = 'Scraping…';
+    const data = await (await fetch(api)).json();
+    box.firstElementChild.textContent = JSON.stringify(data, null, 2);
+  };
+</script>
 </body>
 </html>

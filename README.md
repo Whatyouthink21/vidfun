@@ -1,112 +1,133 @@
-# 🎬 VidFun — Movie & TV Video Player, Multi-Server Embed API & Scraper Engine
+# VidFun — Movie & TV Embed API (with its own scraping player)
 
-**VidFun** is a self-hosted Movie & TV Show streaming platform, standalone iframe **Video Player Embed API** (compatible with VidSrc URL conventions), and **Stream Scraper / JS P.A.C.K.E.R. Unpacker** that runs locally out-of-the-box.
+**Not a streaming site.** There is no catalog, no browsing, no accounts.
+VidFun is two things:
 
----
+1. **An embed API** — `/embed/movie/{id}` and `/embed/tv/{id}/{season}/{episode}` (TMDB or IMDb id) that you drop in an `<iframe>` anywhere.
+2. **Its own player + scraper** — your server scrapes direct `.m3u8`/`.mp4` streams out of upstream embed pages and plays them in a native HLS player. When scraping can't expose a stream, the same player falls back to provider iframes. Nothing is faked: no demo clips standing in for movies, no placeholder "streams".
 
-## ✨ Features
+## Why movies/TV weren't playing before (v1 post-mortem)
 
-1. **Drop-In Video Player Embed API (`/embed/movie/:id` & `/embed/tv/:id/:s/:e`)**
-   - Works with **TMDB IDs** (e.g., `693134`, `1396`, `550`) and **IMDb IDs** (e.g., `tt15239678`, `tt0903747`).
-   - Compatible with standard VidSrc URL patterns (`/embed/movie/:id`, `/embed/tv/:id/:season/:episode`, `/embed/tv/:id/:season-:episode`, `/v2/embed/...`).
-   - Built-in **Server Switcher** inside the player:
-     - **VidFun Direct (Native HTML5 + HLS.js Player)**: Multi-quality adaptive HLS (`.m3u8`) and MP4 (`1080p`, `720p`, `480p`), WebVTT closed captions (`en`, `es`, `fr`), playback speed (`0.5x`–`2x`), Picture-in-Picture, keyboard shortcuts, and an offline local HD stream synthesizer fallback.
-     - **Upstream Embed Providers**: `VidSrc.xyz`, `VidSrc.icu`, `VidSrc.cc v2`, `VidSrc.to`, `SuperEmbed (multiembed.mov)`, `AutoEmbed`, and `2Embed`.
-   - Built-in **TV Season & Episode Drawer** and **Next Episode** button directly inside the embed player.
+| Bug | Effect |
+|---|---|
+| Every catalog title was mapped to the same public **test clips** (Sintel, Big Buck Bunny, Mux test HLS) | You never got the actual movie; several test manifests are dead/CORS-blocked now → black player |
+| On any stall the player fell back to a **canvas animation synthesizer** | Looked alive, played nothing |
+| Provider list was stale (`vidsrc.to`, `vidsrc.icu`, … have rotated/blocked embeds) and **TMDB ids were sent to IMDb-only endpoints and vice-versa** | Iframes loaded error pages |
+| Scraper returned a **simulated sample result** when a fetch failed | API claimed success while returning a Mux test stream |
+| HLS proxy only rewrote bare segment lines, not `URI="…"` key/rendition attributes | Encrypted/multi-rendition HLS broke mid-playlist |
 
-2. **VidSrc & Generic Embed Stream Scraper (`/api/scrape`)**
-   - Parses VidSrc-style server hash nodes (`.server[data-hash]`), `#player_iframe` RCP chains, `<video>` tags, and embedded iframes.
-   - Includes a **Dean Edwards P.A.C.K.E.R. Unpacker** (`eval(function(p,a,c,k,e,d)...)`) and Base64 URL hunter to extract obfuscated `.m3u8`, `.mp4`, and `.vtt` URLs from player scripts.
-   - Includes a **CORS Stream & HLS Manifest Proxy** (`/api/proxy/stream?url=...`) that rewrites relative `.m3u8` segment URLs with custom `Referer` and `User-Agent` headers.
+v2 fixes all of these; when something genuinely can't be scraped you get an explicit per-provider error, not a fake success.
 
-3. **Full Web Streaming Portal & API Playground (`/`)**
-   - Browse Movies & TV Shows with genre filters and instant search / TMDB & IMDb ID lookup.
-   - **Theater Watch Player** with live server switching, TV episode selector, and 1-click `<iframe>` snippet copy.
-   - **Interactive Embed API Builder** and **Scraper & Unpacker Studio**.
-   - **Custom Sources Manager** to add your own movies, shows, `.m3u8`/`.mp4` streams, or custom upstream provider templates.
-
----
-
-## 🚀 Run Locally
-
-### Option 1: Node.js (Recommended)
+## Run
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Start the server (default: http://localhost:3000)
-npm start
-
-# Or run in development watch mode:
-npm run dev
+npm start          # http://localhost:3000
 ```
 
-Then open **http://localhost:3000** in your browser.
+Open `/` for a small API playground (builder + JSON viewer) — that's the entire frontend besides the player.
 
-### Option 2: Docker / Docker Compose
+Optional but recommended: set `TMDB_API_KEY` in `.env` (free at themoviedb.org). Without it, numeric ids are treated as TMDB and `tt…` ids as IMDb, and providers needing the other kind are marked *unavailable for this id* instead of breaking. With it, ids are converted and titles/posters/season-episode counts are filled in.
 
-```bash
-docker compose up --build
-```
+## Embed API
 
----
-
-## 🔗 Embed Player URL Reference
-
-### Movie Embed URLs
-- `http://localhost:3000/embed/movie/693134` *(TMDB ID)*
-- `http://localhost:3000/embed/movie/tt15239678` *(IMDb ID)*
-- `http://localhost:3000/embed/movie?tmdb=693134`
-
-### TV Show Embed URLs
-- `http://localhost:3000/embed/tv/1396/1/1` *(TMDB ID, Season 1, Episode 1)*
-- `http://localhost:3000/embed/tv/1396/1-1` *(VidSrc.xyz hyphen style)*
-- `http://localhost:3000/embed/tv?tmdb=1396&season=1&episode=1`
-
-### Embed Query Parameters
-| Parameter | Example | Description |
-| :--- | :--- | :--- |
-| `server` | `?server=vidfun-direct` | Default server (`vidfun-direct`, `vidsrc-xyz`, `vidsrc-icu`, `vidsrc-cc`, `vidsrc-to`, `multiembed`, `autoembed`, `2embed`) |
-| `autoplay` | `?autoplay=1` | Automatically start playback on load |
-| `color` | `?color=e50914` | Custom hex accent color for player controls |
-| `sub` | `?sub=en` | Default subtitle language (`en`, `es`, `fr`, `off`) |
-| `t` | `?t=120` | Start playback at timestamp (in seconds) |
-
-### HTML `<iframe>` Snippet
 ```html
-<iframe
-  src="http://localhost:3000/embed/movie/693134?autoplay=1&color=e50914"
-  width="100%"
-  height="100%"
-  frameborder="0"
-  allowfullscreen
-  allow="autoplay; encrypted-media; picture-in-picture"
-></iframe>
+<iframe src="https://your-host/embed/movie/550" width="100%" height="100%"
+        frameborder="0" allowfullscreen
+        allow="autoplay; encrypted-media; picture-in-picture"></iframe>
 ```
 
----
+| URL | Meaning |
+|---|---|
+| `/embed/movie/{tmdbId}` · `/embed/movie/{imdbId}` | Movie (e.g. `550`, `tt0137523`) |
+| `/embed/tv/{id}/{season}/{episode}` | TV episode — also `{s}-{e}` style and `/v2/embed/…` |
+| `?server=vidlink` | Start on a specific provider (ids from `/api/providers`) |
+| `?autoplay=1` `?color=e50914` `?t=120` | Autoplay, accent color, start position (s) |
+| `?autonext=1` | TV: auto-advance to the next episode on end |
 
-## 📡 REST API Reference
+**Player behaviour:** scrape → play direct stream (multi-quality HLS, subtitles, speed, PiP, keyboard) → on fatal error try the next scraped stream → fall back to provider iframes in order → only then show an error screen listing what each server said. Use the server dropdown (top right) to switch manually; TV shows get season/episode steppers.
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/health` | Server health, counts, and available endpoints |
-| `GET` | `/api/catalog` | List & filter Movies and TV Shows (`?type=movie\|tv&genre=...&q=...`) |
-| `GET` | `/api/search?q=...` | Search catalog or dynamically resolve any TMDB/IMDb ID |
-| `GET` | `/api/sources/movie/:id` | Resolve direct HLS/MP4 streams, subtitles & provider embeds for a Movie |
-| `GET` | `/api/sources/tv/:id/:s/:e` | Resolve direct HLS/MP4 streams, subtitles & provider embeds for a TV Episode |
-| `GET` | `/api/scrape?url=...` | Scrape an embed URL (or `?sample=1`) for `.m3u8`/`.mp4` streams & unpack JS |
-| `POST` | `/api/scrape` | Scrape a URL or raw HTML payload (`{ url, rawHtml }`) |
-| `GET` | `/api/proxy/stream?url=...` | CORS proxy for `.m3u8` HLS manifests, segments, and subtitles |
-| `GET` | `/api/providers` | List all configured stream & embed providers |
-| `POST` | `/api/providers` | Register a custom upstream provider URL template |
-| `POST` | `/api/custom/media` | Add a custom Movie or TV Show with custom stream URLs |
-
----
-
-## 🧪 Running Tests
+## JSON API
 
 ```bash
-npm test
+GET /api/sources/movie/550
+GET /api/sources/tv/1399/1/1          # add ?scrape=0 to skip scraping
+GET /api/scrape?url=https://vidsrc.xyz/embed/movie/550
+GET /api/providers · GET /api/health
+GET /api/proxy/stream?url={m3u8}&referer={page}   # CORS/Referer proxy used by the player
 ```
+
+`/api/sources/…` response (abridged):
+
+```jsonc
+{
+  "ok": true, "type": "movie",
+  "ids": { "tmdb": "550", "imdb": "tt0137523" },
+  "direct": [ { "url": "https://…/master.m3u8", "proxiedUrl": "/api/proxy/stream?url=…",
+                "type": "hls", "quality": "1080p", "provider": "vidsrc", "verified": true } ],
+  "subtitles": [ { "url": "https://…/en.vtt", "lang": "en", "label": "English" } ],
+  "providers": [ { "id": "vidlink", "available": true, "embedUrl": "https://vidlink.pro/movie/550", "mode": "iframe" },
+                 { "id": "2embed", "available": false, "reason": "Needs a imdb id…" } ],
+  "scrapeReport": [ { "provider": "vidsrc", "ok": true, "streams": 1, "trace": [ … ] } ]
+}
+```
+
+## How scraping works
+
+For the VidSrc family (`vidsrc.xyz` + mirrors, `vidsrcme.ru`), `src/scraper.js` follows the real chain server-side:
+
+```
+GET /embed/movie/{id}
+  └─ .server[data-hash] elements + <iframe id="player_iframe" src="//{host}/rcp/{hash}">
+GET {host}/rcp/{hash}            ← host discovered from the iframe, not hardcoded
+  └─ <iframe src="{host}/prorcp/{hash}">   (srcrcp also handled)
+GET {host}/prorcp/{hash}
+  └─ Dean Edwards packed JS (src/unpacker.js) + file:/sources regexes
+     → master.m3u8 / .mp4 + .vtt subtitles  → verified with a live probe → player (via proxy)
+```
+
+Everything else (VidLink, Videasy, VidFast, …) is a client-side JS app whose server HTML contains no stream — those are honestly classified `iframe` mode. Results are cached 10 min (`SOURCES_CACHE_TTL_MS`).
+
+## Providers (researched July 2026)
+
+Researched against the providers' own docs and current aggregator lists
+([vidlink.pro](https://vidlink.pro), [vidcore.org](https://vidcore.org),
+[LyeDevGit/free-streaming-apis](https://github.com/LyeDevGit/free-streaming-apis),
+[vidsrcme.ru/api](https://vidsrcme.ru/api/), and open extractors such as CloudStream's
+VidSrcTo/Vidplay and DivineChile/vidsrc-scraper):
+
+| Provider | Movie / TV URL | IDs | Scraped? |
+|---|---|---|---|
+| VidLink | `vidlink.pro/movie/{tmdb}` · `/tv/{tmdb}/{s}/{e}` | TMDB | iframe |
+| Videasy | `player.videasy.net/movie/{tmdb}` · `/tv/{tmdb}/{s}/{e}` | TMDB | iframe |
+| VidFast | `vidfast.pro/movie/{tmdb}` · `/tv/{tmdb}/{s}/{e}` | TMDB | iframe |
+| VidSrc.cc v2 | `vidsrc.cc/v2/embed/movie/{id}` · `/v2/embed/tv/{id}/{s}/{e}` | both | generic |
+| VidSrc | `vidsrc.xyz/embed/movie/{id}` · `/embed/tv/{id}/{s}-{e}` | both | **RCP chain** |
+| VidSrcMe | `vidsrcme.ru/embed/movie/{id}` · `/embed/tv/{id}/{s}/{e}` | both | **RCP chain** |
+| VidCore | `vidcore.org/embed/movie/{tmdb}` · `/embed/tv/{tmdb}/{s}/{e}` | TMDB | iframe |
+| AutoEmbed | `player.autoembed.cc/embed/movie/{tmdb}` | TMDB | iframe |
+| SuperEmbed | `multiembed.mov/?video_id={id}&tmdb=1` (+`&s=&e=`) | both | iframe |
+| 2Embed | `2embed.cc/embed/{imdb}` · `/embedtv/{imdb}&s=&e=` | IMDb-first | iframe |
+| Embed.su | `embed.su/embed/movie/{id}` · `/embed/tv/{id}/{s}/{e}` | both | generic |
+
+These domains rotate constantly — that's why the registry lives in **one file, `src/providers.js`** (also extensible at runtime via the `EXTRA_PROVIDERS` env JSON, no code edits). Availability also depends on your server's network/geography; `scrapeReport[].trace` in the JSON shows exactly where a chain stopped.
+
+## Layout
+
+```
+server.js            Express app (CORS + frame-ancestors *, hls.js vendored locally)
+src/providers.js     Provider registry + URL building + per-provider param names  ← edit this when domains move
+src/scraper.js       RCP/ProRCP chain, HTML parser, stream verifier
+src/unpacker.js      Dean Edwards P.A.C.K.E.R. unpacker + media URL extractor
+src/resolve.js       Scrape orchestration, verification, caching
+src/tmdb.js          ID parsing + optional TMDB conversion/metadata
+src/routes/api.js    /api/* (sources, scrape, proxy)
+src/routes/embed.js  /embed/*, /v2/embed/*
+public/embed.html + js/embed-player.js + css/embed.css   The player
+public/index.html    API docs + playground (the only "site" page)
+test/verify.js       npm test
+```
+
+## Notes
+
+Only embed/scrape content you have the rights to distribute. Upstream providers inject their own ads in iframe mode; direct (scraped) mode plays in VidFun's clean player. Some providers geo-block or bot-check datacenter IPs — if `scrapeReport` shows fetch failures for every provider while embeds work in a browser, run VidFun from a residential connection.
